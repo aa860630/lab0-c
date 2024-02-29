@@ -15,8 +15,10 @@
 struct list_head *q_new()
 {
     struct list_head *head = malloc(sizeof(struct list_head));
-    head->next = head;
-    head->prev = head;
+    if (!head)
+        return NULL;
+
+    INIT_LIST_HEAD(head);
     return head;
 }
 
@@ -39,18 +41,18 @@ bool q_insert_head(struct list_head *head, char *s)
 {
     element_t *new_node = malloc(sizeof(element_t));
 
+    if (!new_node) {
+        return false;
+    }
+
     s = strdup(s);
     new_node->value = s;
+    if (!new_node->value) {
+        free(new_node);
+        return false;
+    }
 
-    new_node->list.next = head->next;
-    head->next->prev = &new_node->list;
-
-    new_node->list.prev = head;
-    head->next = &new_node->list;
-
-    // printf("insert.value = %p",&new_node->value);
-    // printf("insert = %p",&new_node->list);
-
+    list_add(&new_node->list, head);
     return true;
 }
 
@@ -59,20 +61,26 @@ bool q_insert_tail(struct list_head *head, char *s)
 {
     element_t *new_node = malloc(sizeof(element_t));
 
+    if (!new_node) {
+        return false;
+    }
+
     new_node->value = strdup(s);
+    if (!new_node->value) {
+        free(new_node);
+        return false;
+    }
 
-    head->prev->next = &new_node->list;
-    new_node->list.prev = head->prev;
-
-    new_node->list.next = head;
-    head->prev = &new_node->list;
-
+    list_add_tail(&new_node->list, head);
     return true;
 }
 
 /* Remove an element from head of queue */
 element_t *q_remove_head(struct list_head *head, char *sp, size_t bufsize)
 {
+    if (!head || list_empty(head))
+        return NULL;
+
     element_t *node = list_first_entry(head, element_t, list);
 
     list_del_init(head->next);
@@ -88,6 +96,9 @@ element_t *q_remove_head(struct list_head *head, char *sp, size_t bufsize)
 /* Remove an element from tail of queue */
 element_t *q_remove_tail(struct list_head *head, char *sp, size_t bufsize)
 {
+    if (!head || list_empty(head))
+        return NULL;
+
     element_t *node = list_last_entry(head, element_t, list);
 
     list_del_init(head->prev);
@@ -119,22 +130,24 @@ int q_size(struct list_head *head)
 bool q_delete_mid(struct list_head *head)
 {
     // https://leetcode.com/problems/delete-the-middle-node-of-a-linked-list//
-    if (head == NULL)
-        return false;
-    if (head->next == NULL)
+    if (!head)
         return false;
 
     struct list_head *cur = head;
+    element_t *mid;
     int size = q_size(head);
 
     for (int i = 0; i < size / 2 + 1; i++) {
         cur = cur->next;
     }
 
-    cur->prev->next = cur->next;
-    cur->next->prev = cur->prev;
+    // cur->prev->next = cur->next;
+    // cur->next->prev = cur->prev;
 
     list_del_init(cur);
+    mid = container_of(cur, element_t, list);
+    free(mid->value);
+    free(mid);
     return true;
 }
 
@@ -142,6 +155,25 @@ bool q_delete_mid(struct list_head *head)
 bool q_delete_dup(struct list_head *head)
 {
     // https://leetcode.com/problems/remove-duplicates-from-sorted-list-ii/
+    element_t *cur, *safe;
+    bool cmp = 0;
+    list_for_each_entry_safe (cur, safe, head, list) {
+        if (safe != container_of(head, element_t, list) &&
+            strcmp(cur->value, safe->value) == 0) {
+            list_del_init(&cur->list);
+            free(cur->value);
+            free(cur);
+            cmp = 1;
+        } else {
+            if (cmp == 1) {
+                list_del_init(&cur->list);
+                free(cur->value);
+                free(cur);
+            }
+            cmp = 0;
+        }
+    }
+    //&safe->list != &head
     return true;
 }
 
@@ -200,7 +232,42 @@ void q_reverse(struct list_head *head)
 /* Reverse the nodes of the list k at a time */
 void q_reverseK(struct list_head *head, int k)
 {
-    // https://leetcode.com/problems/reverse-nodes-in-k-group/
+    // base cases...
+    if (head == NULL)
+        return;
+    if (head->next == NULL)
+        return;
+
+    // 1 case jo hum handle krenge...
+    struct list_head *cur = head;
+    struct list_head *first = head->next;
+    struct list_head *tail = first;
+    int len, i;
+    len = q_size(head);
+    while (len >= k) {
+        for (i = 1; i < k; i++) {
+            tail = tail->next;
+        }
+        cur->next = tail->next;
+        tail->next->prev = cur;
+
+        first->prev = tail;
+        tail->next = first;
+        q_reverse(first->prev);
+
+        first->next = cur->next;
+        cur->next->prev = first;
+
+        cur->next = tail;
+        tail->prev = cur;
+
+        cur = first;
+        first = cur->next;
+        tail = first;
+
+        len = len - k;
+    }
+    // // https://leetcode.com/problems/reverse-nodes-in-k-group/
 }
 
 /* Sort elements of queue in ascending/descending order */
