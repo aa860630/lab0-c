@@ -269,9 +269,110 @@ void q_reverseK(struct list_head *head, int k)
     }
     // // https://leetcode.com/problems/reverse-nodes-in-k-group/
 }
+struct list_head *merge(struct list_head *l1, struct list_head *l2)
+{
+    // merge with pseudo node
+    struct list_head new_queue;
+    struct list_head tmp1;
+    struct list_head tmp2;
 
+    struct list_head *cur;
+
+    INIT_LIST_HEAD(&new_queue);
+    INIT_LIST_HEAD(&tmp1);
+    INIT_LIST_HEAD(&tmp2);
+
+
+    list_add_tail(&tmp1, l1);
+    list_add_tail(&tmp2, l2);
+
+    struct list_head *t1 = (&tmp1)->next;
+    struct list_head *t2 = (&tmp2)->next;
+
+    element_t *element_l1;
+    element_t *element_l2;
+
+    while (t1 && t2) {
+        if (t1->next == t1) {
+            list_splice_tail(&tmp2, &new_queue);
+            break;
+        } else if (t2->next == t2) {
+            list_splice_tail(&tmp1, &new_queue);
+            break;
+        } else {
+            element_l1 = container_of(t1, element_t, list);
+            element_l2 = container_of(t2, element_t, list);
+            if (strcmp(element_l1->value, element_l2->value) <= 0) {
+                cur = t1;
+                t1 = t1->next;
+                list_del_init(cur);
+                list_add_tail(cur, &new_queue);
+
+            } else {
+                cur = t2;
+                t2 = t2->next;
+                list_del_init(cur);
+                list_add_tail(cur, &new_queue);
+            }
+        }
+    }
+
+    l1 = new_queue.next;
+    list_del(&new_queue);
+    return l1;
+}
+
+struct list_head *mergeSortList(struct list_head *head)
+{
+    // merge sort
+    if (!head || head->next == head)
+        return head;
+
+    // struct list_head *first = head;
+    struct list_head *fast = head->next;
+    struct list_head *slow = head;
+
+    // split list
+    while (fast != head && fast->next != head) {
+        slow = slow->next;
+        fast = fast->next->next;
+    }
+
+    // list_cut_position(&new, head, slow);
+
+    // split two list
+    fast = slow->next;
+
+    fast->prev = head->prev;
+    fast->prev->next = fast;
+
+    slow->next = head;
+    head->prev = slow;
+
+    // sort each list
+    struct list_head *l1 = mergeSortList(head);
+    struct list_head *l2 = mergeSortList(fast);
+
+    // merge sorted l1 and sorted l2
+    return merge(l1, l2);
+}
 /* Sort elements of queue in ascending/descending order */
-void q_sort(struct list_head *head, bool descend) {}
+void q_sort(struct list_head *head, bool descend)
+{
+    if (!head || q_size(head) <= 1)
+        return;
+
+    // Bubble sort
+    // q_bubble_sort(head);
+
+    struct list_head *first = head->next;
+    list_del_init(head);
+
+    struct list_head *result = mergeSortList(first);
+    list_add_tail(head, result);
+    if (descend)
+        q_reverse(head);
+}
 
 /* Remove every node which has a node with a strictly less value anywhere to
  * the right side of it */
