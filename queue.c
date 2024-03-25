@@ -11,6 +11,15 @@
  *   cppcheck-suppress nullPointer
  */
 
+int cmp(void *priv, const struct list_head *a, const struct list_head *b)
+{
+    element_t *ela, *elb;
+
+    ela = list_entry(a, element_t, list);
+    elb = list_entry(b, element_t, list);
+
+    return strcmp(ela->value, elb->value);
+}
 
 /* Create an empty queue */
 struct list_head *q_new()
@@ -157,21 +166,21 @@ bool q_delete_dup(struct list_head *head)
 {
     // https://leetcode.com/problems/remove-duplicates-from-sorted-list-ii/
     element_t *cur, *safe;
-    bool cmp = 0;
+    bool comp = 0;
     list_for_each_entry_safe (cur, safe, head, list) {
         if (safe != container_of(head, element_t, list) &&
             strcmp(cur->value, safe->value) == 0) {
             list_del_init(&cur->list);
             free(cur->value);
             free(cur);
-            cmp = 1;
+            comp = 1;
         } else {
-            if (cmp == 1) {
+            if (comp == 1) {
                 list_del_init(&cur->list);
                 free(cur->value);
                 free(cur);
             }
-            cmp = 0;
+            comp = 0;
         }
     }
     //&safe->list != &head
